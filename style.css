@@ -1,0 +1,164 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: 'Courier New', Courier, monospace;
+    color: #00ff41;
+}
+
+.container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Поток задней камеры */
+#webcam {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+    filter: brightness(1) contrast(1);
+    transition: filter 0.2s linear, transform 0.1s ease-out;
+}
+
+/* Режим Fullbright для темноты */
+#webcam.fb-active {
+    filter: brightness(2.2) contrast(1.7) saturate(0.3) sepia(1) hue-rotate(70deg);
+}
+
+/* Холст для Валлхак рамок */
+#overlay {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* Верхняя панель статуса */
+.hud-top {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+.status-block {
+    background: rgba(0, 30, 0, 0.65);
+    border: 1px solid #00ff41;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    backdrop-filter: blur(5px);
+    text-transform: uppercase;
+    box-shadow: 0 0 8px rgba(0, 255, 65, 0.2);
+}
+
+/* Кнопки управления */
+.controls-panel {
+    position: absolute;
+    bottom: 30px;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 25px;
+    z-index: 10;
+}
+
+.zoom-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.btn {
+    background: rgba(0, 255, 65, 0.15);
+    border: 2px solid #00ff41;
+    color: #00ff41;
+    font-size: 14px;
+    font-weight: bold;
+    font-family: monospace;
+    border-radius: 8px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+    transition: all 0.2s;
+    text-transform: uppercase;
+}
+
+.btn:active {
+    background: rgba(0, 255, 65, 0.4);
+}
+
+.btn.active {
+    background: #00ff41;
+    color: #000;
+    box-shadow: 0 0 25px #00ff41;
+}
+
+.btn-fb {
+    padding: 15px 22px;
+}
+
+.zoom-btn {
+    width: 55px;
+    height: 55px;
+    font-size: 22px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+}
+
+/* Тактический прицел */
+.crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.crosshair::before, .crosshair::after {
+    content: '';
+    position: absolute;
+    background: #00ff41;
+}
+
+.crosshair::before {
+    top: 19px;
+    left: 0;
+    width: 40px;
+    height: 2px;
+}
+
+.crosshair::after {
+    top: 0;
+    left: 19px;
+    width: 2px;
+    height: 40px;
+}

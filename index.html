@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Tactical AR Night Vision</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <!-- Видео с камеры -->
+    <video id="webcam" autoplay playsinline muted></video>
+    
+    <!-- Холст для Валлхака -->
+    <canvas id="overlay"></canvas>
+
+    <!-- Прицел -->
+    <div class="crosshair"></div>
+
+    <!-- Статус сверху -->
+    <div class="hud-top">
+        <div class="status-block">SCANNER: ACTIVE</div>
+        <div id="statusText" class="status-block">CAM: INIT</div>
+    </div>
+
+    <!-- Кнопки управления (Зум и Fullbright) -->
+    <div class="controls-panel">
+        <div class="zoom-controls">
+            <button class="btn zoom-btn" id="zoomIn">+</button>
+            <button class="btn zoom-btn" id="zoomOut">-</button>
+        </div>
+        <button id="fullbrightBtn" class="btn btn-fb" onclick="toggleFullbright()">FB: OFF</button>
+    </div>
+</div>
+
+<script>
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('overlay');
+    const ctx = canvas.getContext('2d');
+    const statusText = document.getElementById('statusText');
+    const fullbrightBtn = document.getElementById('fullbrightBtn');
+    const zoomInBtn = document.getElementById('zoomIn');
+    const zoomOutBtn = document.getElementById('zoomOut');
+
+    let isFullbright = false;
+    let currentZoom = 1.0;
+    const ZOOM_STEP = 0.5;
+    const MAX_ZOOM = 5.0;
+    const MIN_ZOOM = 1.0;
+
+    // Адаптация размера экрана
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Включение задней камеры высокого качества
+    async function initCamera() {
+        try {
+            const constraints = {
+                video: {
+                    facingMode: { exact: "environment" },
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                },
+                audio: false
+            };
+            
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (e) {
+                // Если нет прямого доступа к exact, берем обычный поток с задней
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" }, 
+                    audio: false 
+                });
+            }
+
+            video.srcObject = stream;
+            statusText.innerText = "CAM: ACTIVE";
+
+        } catch (err) {
+            console.error(err);
+            statusText.innerText = "CAM ERROR (HTTPS?)";
+        }
+    }
+
+    // Переключатель режима Fullbright
+    function toggleFullbright() {
+        isFullbright = !isFullbright;
+        if (isFullbright) {
+            video.classList.add('fb-active');
+            fullbrightBtn.classList.add('active');
+            fullbrightBtn.innerText = "FB: ON";
+        } else {
+            video.classList.remove('fb-active');
+            fullbrightBtn.classList.remove('active');
+            fullbrightBtn.innerText = "FB: OFF";
+        }
+    }
+
+    // Приближение (Зум)
+    function updateZoom() {
+        video.style.transform = `scale(${currentZoom})`;
+    }
+
+    zoomInBtn.addEventListener('click', () => {
+        if (currentZoom < MAX_ZOOM) {
+            currentZoom += ZOOM_STEP;
+            updateZoom();
+        }
+    });
+
+    zoomOutBtn.addEventListener('click', () => {
+        if (currentZoom > MIN_ZOOM) {
+            currentZoom -= ZOOM_STEP;
+            updateZoom();
+        }
+    });
+
+    // --- Динамический Валлхак (боксы) ---
+    let targets = [
+        { x: window.innerWidth * 0.25, y: window.innerHeight * 0.35, vx: 0.8, vy: 0.4, w: 90, h: 170, tag: "TARGET #01", locked: true },
+        { x: window.innerWidth * 0.65, y: window.innerHeight * 0.42, vx: -0.7, vy: -0.3, w: 85, h: 160, tag: "TARGET #02", locked: false }
+    ];
+
+    function drawTacticalBoxes() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        targets.forEach((t, i) => {
+            t.x += t.vx;
+            t.y += t.vy;
+
+            // Отскок от рамок
+            if (t.x < 40 || t.x > canvas.width - t.w - 40) t.vx *= -1;
+            if (t.y < 70 || t.y > canvas.height - t.h - 70) t.vy *= -1;
+
+            let color = isFullbright ? "#00ff41" : "#ff3333";
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = isFullbright ? 10 : 4;
+
+            // Рисуем угловой бокс
+            let bW = t.w;
+            let bH = t.h;
+            let cLen = 14;
+
+            ctx.beginPath();
+            // Верх-лево
+            ctx.moveTo(t.x, t.y + cLen); ctx.lineTo(t.x, t.y); ctx.lineTo(t.x + cLen, t.y);
+            // Верх-право
+            ctx.moveTo(t.x + bW - cLen, t.y); ctx.lineTo(t.x + bW, t.y); ctx.lineTo(t.x + bW, t.y + cLen);
+            // Низ-лево
+            ctx.moveTo(t.x, t.y + bH - cLen); ctx.lineTo(t.x, t.y + bH); ctx.lineTo(t.x + cLen, t.y + bH);
+            // Низ-право
+            ctx.moveTo(t.x + bW - cLen, t.y + bH); ctx.lineTo(t.x + bW, t.y + bH); ctx.lineTo(t.x + bW, t.y + bH - cLen);
+            ctx.stroke();
+
+            // Текст над объектом
+            ctx.fillStyle = color;
+            ctx.font = "11px monospace";
+            ctx.shadowBlur = 0;
+
+            ctx.fillText(`${t.tag}`, t.x, t.y - 18);
+            ctx.fillText(`LOCK: 94% | D: ${(2.8 + i * 1.6).toFixed(1)}m`, t.x, t.y - 6);
+        });
+
+        requestAnimationFrame(drawTacticalBoxes);
+    }
+
+    window.onload = () => {
+        initCamera();
+        drawTacticalBoxes();
+    };
+</script>
+
+</body>
+</html>
